@@ -68,10 +68,12 @@ public class MeilisearchSearchProvider : IExternalSearchProvider
                 query.SearchTerm, limit, filter, attributesToSearchOn, matchingStrategy, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            // Rethrow so Jellyfin's search manager sees the failure and can use its database search instead.
+            // An empty result would look like "nothing found".
             _logger.LogError(ex, "Meilisearch search failed for term '{SearchTerm}'", query.SearchTerm);
-            yield break;
+            throw;
         }
 
         foreach (var (id, score) in results)
