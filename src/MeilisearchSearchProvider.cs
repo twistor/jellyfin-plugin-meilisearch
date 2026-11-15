@@ -66,6 +66,9 @@ public class MeilisearchSearchProvider : IExternalSearchProvider
         var matchingStrategy = Plugin.Instance?.Configuration.MatchingStrategy ?? "last";
 
         IReadOnlyList<(Guid Id, float Score)> results;
+
+        // Failures are rethrown so Jellyfin's search manager sees them and can use its database search instead.
+        // An empty result would look like "nothing found".
         try
         {
             results = await SearchInternalAsync(
@@ -84,12 +87,12 @@ public class MeilisearchSearchProvider : IExternalSearchProvider
                 "Meilisearch search timed out for term '{SearchTerm}'; skipping Meilisearch for {Pause} s",
                 query.SearchTerm,
                 TimeoutPause.TotalSeconds);
-            yield break;
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Meilisearch search failed for term '{SearchTerm}'", query.SearchTerm);
-            yield break;
+            throw;
         }
 
         foreach (var (id, score) in results)
